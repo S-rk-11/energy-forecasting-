@@ -3,38 +3,63 @@ import pandas as pd
 import numpy as np
 import joblib
 from datetime import timedelta
-import matplotlib.pyplot as plt
 
 # Title
-st.title("Daily Energy Consumption Forecast")
+st.title("Daily Energy Consumption Forecast (Next 30 Days)")
 
-# Load the saved model
+# Load Model and Scaler
 model = joblib.load("daily_energy_forecast_model.joblib")
 
-# User input - last known value (can be from real data or user input)
-last_value = st.number_input("Enter last known energy consumption value (MW):", value=40000.0)
+try:
+    scaler = joblib.load("scaler.joblib")  # Only if you used it
+except:
+    scaler = None
 
-# Forecast next 30 days
-forecast = []
-current_input = last_value
+# Load your latest data
+uploaded_file = st.file_uploader("Upload latest daily energy consumption data", type=["csv"])
+if uploaded_file:
+    df = pd.read_csv(uploaded_file, parse_dates=["Datetime"])
+    df = df.set_index("Datetime").resample("D").mean()
 
-for i in range(30):
-    # You may need to shape the input depending on your model
-    input_features = np.array([[current_input]])
-    prediction = model.predict(input_features)[0]
-    forecast.append(prediction)
-    current_input = prediction
+    # Show data preview
+    st.subheader("Latest Uploaded Data (Daily)")
+    st.dataframe(df.tail(10))
 
-# Prepare dates
-forecast_dates = pd.date_range(start=pd.Timestamp.today(), periods=30)
-df_forecast = pd.DataFrame({'Date': forecast_dates, 'Predicted Consumption (MW)': forecast})
+    # Generate features (lag-based)
+    df_forecast = df.copy()
+    for i in range(1, 8):
+        df_forecast[f"lag_{i}"] = df_forecast["MW"].shift(i)
+    df_forecast.dropna(inplace=True)
 
-# Line chart
-st.line_chart(df_forecast.set_index('Date'))
+    # Forecast next 30 days
+    future_preds = []
+    last_known = df_forecast.iloc[-1][[f"lag_{i}" for i in range(1, 8)]].values
 
-# Show table
-st.dataframe(df_forecast)
+    for _ in range(30):
+        input_features = last_known.reshape(1, -1)
+        if scaler:
+            input_features = scaler.transform(input_features)
+        next_pred = model.predict(input_features)[0]
+        future_preds.append(next_pred)
 
-# Download CSV
-csv = df_forecast.to_csv(index=False).encode('utf-8')
-st.download_button("Download Forecast as CSV", csv, "30_day_forecast.csv", "text/csv")
+        # Update last_known lags
+        last_known = np.roll(last_known, 1)
+        last_known[0] = next_pred
+
+    # Prepare results
+    last_date = df.index[-1]
+    forecast_dates = [last_date + timedelta(days=i) for i in range(1, 31)]
+    forecast_df = pd.DataFrame({
+        "Date": forecast_dates,
+        "Predicted_MW": future_preds
+    })
+
+    st.subheader("Forecast: Next 30 Days")
+    st.dataframe(forecast_df)
+
+    # Line Chart
+    st.line_chart(forecast_df.set_index("Date"))
+
+    # Download option
+    csv = forecast_df.to_csv(index=False).encode()
+    st.download_button("Download Forecast CSV", data=csv, file_name="30_day_forecast.csv", mime="text/csv")
