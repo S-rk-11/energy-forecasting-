@@ -2,50 +2,28 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import matplotlib.pyplot as plt
-from datetime import timedelta
+import datetime
 
-# Load trained model
-model = joblib.load('xgb_energy_forecast_model.joblib')
+# Load model
+model = joblib.load("xgb_energy_model.joblib")
 
-# Title
-st.title("30-Day Energy Consumption Forecast")
-st.markdown("Forecast the next 30 days of energy (MW) using XGBoost model.")
+# App Title
+st.title("Hourly Energy Consumption Forecast")
+st.markdown("Forecast the next hour's PJM Energy Consumption (MW)")
 
-# Sidebar input
-st.sidebar.header("Input Latest Known Data")
-lag_1 = st.sidebar.number_input("Lag 1 (Yesterday's MW)", value=50000.0)
-lag_2 = st.sidebar.number_input("Lag 2 (Day Before Yesterday's MW)", value=49500.0)
+# Input section
+st.header("Enter Current Data")
 
-# Generate forecast
-if st.button("Forecast Next 30 Days"):
-    history = pd.Series([lag_2, lag_1])
-    future_dates = pd.date_range(start=pd.Timestamp.today() + timedelta(days=1), periods=30, freq='D')
-    future_preds = []
+# Input values
+lag_1 = st.number_input("Lag 1 (previous hour consumption)", min_value=0.0)
+lag_2 = st.number_input("Lag 2 (2 hours ago consumption)", min_value=0.0)
+rolling_mean_3 = st.number_input("3-Hour Rolling Mean (before current hour)", min_value=0.0)
+dayofweek = st.selectbox("Day of Week", [0,1,2,3,4,5,6], format_func=lambda x: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][x])
+month = st.selectbox("Month", list(range(1,13)), format_func=lambda x: datetime.date(1900, x, 1).strftime('%B'))
 
-    for date in future_dates:
-        rolling_mean_3 = history[-3:].mean() if len(history) >= 3 else history.mean()
-        dayofweek = date.dayofweek
-        month = date.month
-
-        input_data = pd.DataFrame([[history[-1], history[-2], rolling_mean_3, dayofweek, month]],
-                                  columns=['lag_1', 'lag_2', 'rolling_mean_3', 'dayofweek', 'month'])
-
-        pred = model.predict(input_data)[0]
-        future_preds.append(pred)
-        history.loc[date] = pred
-
-    # Plot
-    st.subheader("Forecast Plot")
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(future_dates, future_preds, marker='o', linestyle='-', color='red')
-    ax.set_title("Forecasted Energy Consumption for Next 30 Days")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Energy (MW)")
-    ax.grid(True)
-    st.pyplot(fig)
-
-    # Show table
-    st.subheader("Forecast Data")
-    forecast_df = pd.DataFrame({"Date": future_dates, "Predicted MW": future_preds})
-    st.dataframe(forecast_df)
+# Predict button
+if st.button("Predict Energy Consumption"):
+    input_data = pd.DataFrame([[lag_1, lag_2, rolling_mean_3, dayofweek, month]],
+                              columns=['lag_1', 'lag_2', 'rolling_mean_3', 'dayofweek', 'month'])
+    prediction = model.predict(input_data)[0]
+    st.success(f"Forecasted PJMW_MW for Next Hour: {prediction:.2f} MW")
