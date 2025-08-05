@@ -2,28 +2,39 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import datetime
+from datetime import timedelta
+import matplotlib.pyplot as plt
 
-# Load model
-model = joblib.load("xgb_energy_forecast_model.joblib")
+# Title
+st.title("Daily Energy Consumption Forecast")
 
-# App Title
-st.title("Hourly Energy Consumption Forecast")
-st.markdown("Forecast the next hour's PJM Energy Consumption (MW)")
+# Load the saved model
+model = joblib.load("daily_energy_forecast_model.joblib")
 
-# Input section
-st.header("Enter Current Data")
+# User input - last known value (can be from real data or user input)
+last_value = st.number_input("Enter last known energy consumption value (MW):", value=40000.0)
 
-# Input values
-lag_1 = st.number_input("Lag 1 (previous hour consumption)", min_value=0.0)
-lag_2 = st.number_input("Lag 2 (2 hours ago consumption)", min_value=0.0)
-rolling_mean_3 = st.number_input("3-Hour Rolling Mean (before current hour)", min_value=0.0)
-dayofweek = st.selectbox("Day of Week", [0,1,2,3,4,5,6], format_func=lambda x: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][x])
-month = st.selectbox("Month", list(range(1,13)), format_func=lambda x: datetime.date(1900, x, 1).strftime('%B'))
+# Forecast next 30 days
+forecast = []
+current_input = last_value
 
-# Predict button
-if st.button("Predict Energy Consumption"):
-    input_data = pd.DataFrame([[lag_1, lag_2, rolling_mean_3, dayofweek, month]],
-                              columns=['lag_1', 'lag_2', 'rolling_mean_3', 'dayofweek', 'month'])
-    prediction = model.predict(input_data)[0]
-    st.success(f"Forecasted PJMW_MW for Next Hour: {prediction:.2f} MW")
+for i in range(30):
+    # You may need to shape the input depending on your model
+    input_features = np.array([[current_input]])
+    prediction = model.predict(input_features)[0]
+    forecast.append(prediction)
+    current_input = prediction
+
+# Prepare dates
+forecast_dates = pd.date_range(start=pd.Timestamp.today(), periods=30)
+df_forecast = pd.DataFrame({'Date': forecast_dates, 'Predicted Consumption (MW)': forecast})
+
+# Line chart
+st.line_chart(df_forecast.set_index('Date'))
+
+# Show table
+st.dataframe(df_forecast)
+
+# Download CSV
+csv = df_forecast.to_csv(index=False).encode('utf-8')
+st.download_button("Download Forecast as CSV", csv, "30_day_forecast.csv", "text/csv")
