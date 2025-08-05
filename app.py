@@ -5,7 +5,7 @@ import joblib
 import datetime
 
 # Load model
-model = joblib.load("xgb_energy_forcast_model.joblib")
+model = joblib.load("xgb_energy_forecast_model.joblib")
 
 # App Title
 st.title("Hourly Energy Consumption Forecast")
