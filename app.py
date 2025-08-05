@@ -21,6 +21,12 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file, parse_dates=["Datetime"])
     df = df.set_index("Datetime").resample("D").mean()
 
+    # Show column names to verify
+    st.write("Columns in uploaded file:", df.columns.tolist())
+
+    # Rename to standard 'MW' column for forecast
+    df.columns = ["MW"]
+
     # Show data preview
     st.subheader("Latest Uploaded Data (Daily)")
     st.dataframe(df.tail(10))
