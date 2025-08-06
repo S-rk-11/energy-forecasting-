@@ -4,17 +4,23 @@ import numpy as np
 import joblib
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 # ----------------------
 # Page Configuration
 # ----------------------
-st.set_page_config(page_title="PJM Daily Energy Forecast", layout="centered")
-st.title("\U0001F50C PJM Daily Energy Forecast")
+st.set_page_config(page_title="PJM Energy Forecast Dashboard", layout="centered")
+st.title("🔌 PJM Daily Energy Forecast Dashboard")
 st.markdown("""
-This professional web application forecasts PJM **daily** energy consumption using a pre-trained **XGBoost** model.
+Welcome to the **PJM Energy Forecasting Dashboard**.
 
-Upload the most recent dataset, select the forecast horizon (up to 30 days), and visualize or download the predicted results.
+This professional application uses a trained **XGBoost** model to forecast daily energy consumption for the **PJM Interconnection**.
+
+**Steps:**
+- Select a forecast **start date**.
+- Choose the **number of future days** you’d like to forecast (1–30).
+- Visualize recent actuals and future forecasts.
+- Download forecast data for reporting.
 """)
 
 # ----------------------
@@ -38,7 +44,7 @@ def load_data():
     try:
         df = pd.read_csv("PJMW_hourly.csv", parse_dates=["Datetime"])
         df.set_index("Datetime", inplace=True)
-        return df.resample("D").mean()  # Convert to daily average
+        return df.resample("D").mean()  # Daily average
     except Exception as e:
         st.error(f"\u274C Error loading dataset: {e}")
         st.stop()
@@ -57,19 +63,38 @@ def create_features(df):
     return df
 
 # ----------------------
-# User Input: Forecast Days
+# Sidebar Controls
 # ----------------------
-future_days = st.slider("Select the number of future days to forecast:", 1, 30, 7)
+st.sidebar.header("🔧 Configuration")
+
+future_days = st.sidebar.slider("Forecast horizon (days):", 1, 30, 7)
+
+# Auto-detect last available date
+last_available_date = data.index[-1].date()
+
+forecast_start = st.sidebar.date_input(
+    "Start forecast from:",
+    value=last_available_date + timedelta(days=1),
+    min_value=last_available_date + timedelta(days=1),
+    max_value=last_available_date + timedelta(days=30)
+)
 
 # ----------------------
-# Forecast Logic
+# Forecasting Logic
 # ----------------------
 df = data.copy()
 df = create_features(df)
 df.dropna(inplace=True)
 
+# Get base data to forecast from selected date
+base_df = df[df.index <= pd.to_datetime(forecast_start - timedelta(days=1))].copy()
+
+if base_df.empty:
+    st.warning("Not enough historical data before selected date to start forecasting.")
+    st.stop()
+
 predictions = []
-last_known = df.copy()
+last_known = base_df.copy()
 
 for _ in range(future_days):
     next_date = last_known.index[-1] + timedelta(days=1)
@@ -98,14 +123,15 @@ plot_df = pd.concat([recent_actual, forecast_df], axis=0)
 # ----------------------
 # Visualization
 # ----------------------
-st.subheader("\U0001F4C8 Forecasted Daily Energy Consumption")
-fig, ax = plt.subplots(figsize=(10, 5))
-plot_df.plot(ax=ax, linewidth=2)
+st.subheader(f"📊 Forecast from {forecast_start.strftime('%Y-%m-%d')} for {future_days} Days")
+fig, ax = plt.subplots(figsize=(12, 5))
+plot_df.plot(ax=ax, linewidth=2, marker='o')
 ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 plt.xticks(rotation=45)
 plt.xlabel("Date")
-plt.ylabel("Energy Consumption (MW)")
-plt.title("PJM Daily Energy Forecast: Actual vs Predicted")
+plt.ylabel("MW Consumption")
+plt.title("PJM Daily Forecast vs Actual Energy Consumption")
+plt.tight_layout()
 plt.grid(True)
 st.pyplot(fig)
 
@@ -113,8 +139,8 @@ st.pyplot(fig)
 # Download Forecast
 # ----------------------
 st.download_button(
-    label="\U0001F4E5 Download Forecast CSV",
+    label="📥 Download Forecast CSV",
     data=forecast_df.reset_index().to_csv(index=False),
-    file_name="pjm_30_day_forecast.csv",
+    file_name="pjm_energy_forecast.csv",
     mime="text/csv"
 )
