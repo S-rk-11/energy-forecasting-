@@ -3,16 +3,16 @@ import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 # ----------------------
 # Page Configuration
 # ----------------------
-st.set_page_config(page_title="PJM Energy Forecast", layout="centered")
+st.set_page_config(page_title="PJM Daily Energy Forecast", layout="centered")
 st.title("🔌 PJM Daily Energy Forecast")
 st.markdown("""
-This web app allows you to forecast PJM **daily** energy consumption using XGBoost.
-Select the number of future days you'd like to forecast, and see the prediction plotted with recent data.
+This professional web app forecasts PJM **daily** energy consumption using XGBoost.
+You can select the forecast start date, duration, and view automatic insights below the graph.
 """)
 
 # ----------------------
@@ -36,7 +36,7 @@ def load_data():
     try:
         df = pd.read_csv("PJMW_hourly.csv", parse_dates=["Datetime"])
         df.set_index("Datetime", inplace=True)
-        daily_df = df.resample("D").mean()  # Convert to daily
+        daily_df = df.resample("D").mean()
         return daily_df
     except Exception as e:
         st.error(f"❌ Error loading past data: {e}")
@@ -56,9 +56,12 @@ def create_features(df):
     return df
 
 # ----------------------
-# User Input for Forecast
+# Sidebar Controls
 # ----------------------
-future_days = st.slider("Select how many future days to forecast:", min_value=1, max_value=30, value=7)
+st.sidebar.header("🔧 Forecast Settings")
+future_days = st.sidebar.slider("Forecast days:", min_value=1, max_value=30, value=7)
+default_start_date = data.index[-1] + timedelta(days=1)
+start_date = st.sidebar.date_input("Forecast Start Date:", default_start_date)
 
 # ----------------------
 # Forecasting Logic
@@ -72,7 +75,13 @@ last_known = df.copy()
 
 for i in range(future_days):
     next_date = last_known.index[-1] + timedelta(days=1)
-    
+    if next_date < pd.to_datetime(start_date):
+        # Fill dates until start_date is reached
+        next_row = pd.DataFrame(index=[next_date])
+        next_row['PJMW_MW'] = np.nan
+        last_known = pd.concat([last_known, next_row])
+        continue
+
     next_row = pd.DataFrame(index=[next_date])
     next_row['lag_1'] = last_known['PJMW_MW'].iloc[-1]
     next_row['lag_2'] = last_known['PJMW_MW'].iloc[-2]
@@ -80,11 +89,10 @@ for i in range(future_days):
     next_row['dayofweek'] = next_date.dayofweek
     next_row['month'] = next_date.month
 
-    # Ensure order of features matches training
     X_pred = next_row[['lag_1', 'lag_2', 'rolling_mean_3', 'dayofweek', 'month']]
     pred = model.predict(X_pred)[0]
-    
     next_row['PJMW_MW'] = pred
+
     last_known = pd.concat([last_known, next_row])
     predictions.append((next_date, pred))
 
@@ -93,7 +101,6 @@ for i in range(future_days):
 # ----------------------
 forecast_df = pd.DataFrame(predictions, columns=["Datetime", "Forecast_MW"]).set_index("Datetime")
 recent_actual = df[["PJMW_MW"]].rename(columns={"PJMW_MW": "Actual_MW"}).tail(30)
-
 plot_df = pd.concat([recent_actual, forecast_df], axis=0)
 
 # ----------------------
@@ -102,10 +109,27 @@ plot_df = pd.concat([recent_actual, forecast_df], axis=0)
 st.subheader("📈 Forecasted Energy Consumption")
 fig, ax = plt.subplots(figsize=(10, 4))
 plot_df.plot(ax=ax, linewidth=2)
-plt.xlabel("Datetime")
-plt.ylabel("MW Consumption")
-plt.grid(True)
+ax.set_xlabel("Date")
+ax.set_ylabel("MW Consumption")
+ax.set_title("Energy Consumption Forecast")
+ax.grid(True)
+fig.autofmt_xdate()
 st.pyplot(fig)
+
+# ----------------------
+# Auto Graph Summary Below Plot
+# ----------------------
+latest = forecast_df.Forecast_MW.values
+max_val = np.max(latest)
+min_val = np.min(latest)
+avg_val = np.mean(latest)
+
+st.markdown("""
+### 📊 Automatic Graph Summary
+- **Maximum Forecasted Consumption**: {:.2f} MW  
+- **Minimum Forecasted Consumption**: {:.2f} MW  
+- **Average Forecasted Consumption**: {:.2f} MW
+""".format(max_val, min_val, avg_val))
 
 # ----------------------
 # Download Option
@@ -114,6 +138,3 @@ st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
-
-
-
