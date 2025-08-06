@@ -9,10 +9,10 @@ from datetime import timedelta
 # Page Configuration
 # ----------------------
 st.set_page_config(page_title="PJM Energy Forecast", layout="centered")
-st.title("🔌 PJM Hourly Energy Forecast")
+st.title("🔌 PJM Daily Energy Forecast")
 st.markdown("""
-This app forecasts PJM hourly energy consumption using an XGBoost model.
-Select how many future days you want to forecast.
+This web app allows you to forecast PJM **daily** energy consumption using XGBoost.
+Select the number of future days you'd like to forecast, and see the prediction plotted with recent data.
 """)
 
 # ----------------------
@@ -29,22 +29,23 @@ def load_model():
 model = load_model()
 
 # ----------------------
-# Load Historical Data
+# Load Past Data
 # ----------------------
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("PJMW_hourly.csv", parse_dates=['Datetime'])
-        df.set_index('Datetime', inplace=True)
-        return df
+        df = pd.read_csv("PJMW_hourly.csv", parse_dates=["Datetime"])
+        df.set_index("Datetime", inplace=True)
+        daily_df = df.resample("D").mean()  # Convert to daily
+        return daily_df
     except Exception as e:
-        st.error(f"❌ Error loading data: {e}")
+        st.error(f"❌ Error loading past data: {e}")
         st.stop()
 
 data = load_data()
 
 # ----------------------
-# Feature Engineering
+# Feature Engineering for Daily Forecasting
 # ----------------------
 def create_features(df):
     df['lag_1'] = df['PJMW_MW'].shift(1)
@@ -52,42 +53,48 @@ def create_features(df):
     df['rolling_mean_3'] = df['PJMW_MW'].rolling(window=3).mean().shift(1)
     df['dayofweek'] = df.index.dayofweek
     df['month'] = df.index.month
-    return df[['lag_1', 'lag_2', 'rolling_mean_3', 'dayofweek', 'month']]
+    return df
 
 # ----------------------
-# User Input
+# User Input for Forecast
 # ----------------------
-future_days = st.slider("Select number of future days to forecast:", min_value=1, max_value=30, value=7)
+future_days = st.slider("Select how many future days to forecast:", min_value=1, max_value=30, value=7)
 
 # ----------------------
-# Prepare Forecast Data
+# Forecasting Logic
 # ----------------------
 df = data.copy()
-forecast_steps = future_days * 24
+df = create_features(df)
+df.dropna(inplace=True)
+
 predictions = []
+last_known = df.copy()
 
-for i in range(forecast_steps):
-    last_row = df.iloc[-1:].copy()
-    features = create_features(df).iloc[[-1]]
+for i in range(future_days):
+    next_date = last_known.index[-1] + timedelta(days=1)
+    
+    next_row = pd.DataFrame(index=[next_date])
+    next_row['lag_1'] = last_known['PJMW_MW'].iloc[-1]
+    next_row['lag_2'] = last_known['PJMW_MW'].iloc[-2]
+    next_row['rolling_mean_3'] = last_known['PJMW_MW'].iloc[-3:].mean()
+    next_row['dayofweek'] = next_date.dayofweek
+    next_row['month'] = next_date.month
 
-    if features.isnull().any().any():
-        st.warning("❌ Not enough past data to compute all features. Try again later.")
-        st.stop()
-
-    pred = model.predict(features)[0]
-    next_timestamp = last_row.index[0] + timedelta(hours=1)
-    df.loc[next_timestamp] = [pred]  # Add forecast to df for next step
-
-    predictions.append((next_timestamp, pred))
+    # Ensure order of features matches training
+    X_pred = next_row[['lag_1', 'lag_2', 'rolling_mean_3', 'dayofweek', 'month']]
+    pred = model.predict(X_pred)[0]
+    
+    next_row['PJMW_MW'] = pred
+    last_known = pd.concat([last_known, next_row])
+    predictions.append((next_date, pred))
 
 # ----------------------
-# Forecast Result
+# Prepare Output
 # ----------------------
 forecast_df = pd.DataFrame(predictions, columns=["Datetime", "Forecast_MW"]).set_index("Datetime")
+recent_actual = df[["PJMW_MW"]].rename(columns={"PJMW_MW": "Actual_MW"}).tail(30)
 
-# Combine with Past Data for Plot
-recent_df = data[['PJMW_MW']].rename(columns={'PJMW_MW': 'Actual_MW'}).tail(7*24)
-plot_df = pd.concat([recent_df, forecast_df], axis=0)
+plot_df = pd.concat([recent_actual, forecast_df], axis=0)
 
 # ----------------------
 # Plot
@@ -101,6 +108,9 @@ plt.grid(True)
 st.pyplot(fig)
 
 # ----------------------
-# Download
+# Download Option
 # ----------------------
-st.download_button("📥 Download Forecast CSV", data=forecast_df.to_csv(), file_name="forecast.csv")
+st.download_button("📥 Download Forecast Data as CSV",
+                   data=forecast_df.reset_index().to_csv(index=False),
+                   file_name="daily_forecast.csv",
+                   mime="text/csv")
