@@ -1,3 +1,10 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import joblib
+import matplotlib.pyplot as plt
+from datetime import timedelta, datetime, time
+
 def add_bg_from_url():
     st.markdown(
          f"""
@@ -13,13 +20,6 @@ def add_bg_from_url():
      )
 
 add_bg_from_url()
-
-import streamlit as st
-import pandas as pd
-import numpy as np
-import joblib
-import matplotlib.pyplot as plt
-from datetime import timedelta, datetime, time
 
 # ----------------------
 # Page Configuration
@@ -162,6 +162,7 @@ st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
+
 
 
 
