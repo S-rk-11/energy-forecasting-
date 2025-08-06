@@ -108,9 +108,23 @@ plt.grid(True)
 st.pyplot(fig)
 
 # ----------------------
+# Optional: Plot Forecast Alone
+# ----------------------
+st.subheader("🔮 Forecast Only: Next 30 Days")
+fig2, ax2 = plt.subplots(figsize=(10, 4))
+forecast_df.plot(ax=ax2, color='orange', linewidth=2)
+plt.xlabel("Date")
+plt.ylabel("Forecasted MW")
+plt.title("30-Day Energy Forecast")
+plt.grid(True)
+st.pyplot(fig2)
+
+
+# ----------------------
 # Download Option
 # ----------------------
 st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
+
