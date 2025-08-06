@@ -9,7 +9,7 @@ from datetime import timedelta, datetime, time
 # Page Configuration
 # ----------------------
 st.set_page_config(page_title="PJM Daily Energy Forecast", layout="centered")
-st.title("🔌 PJM Daily Energy Forecast")
+st.title("PJM Daily Energy Forecast")
 st.markdown("""
 This professional web app forecasts PJM **daily** energy consumption using XGBoost.
 You can select the forecast start date, duration, and view automatic insights below the graph.
@@ -23,7 +23,7 @@ def load_model():
     try:
         return joblib.load("xgb_energy_forecast_model.joblib")
     except Exception as e:
-        st.error(f"❌ Error loading model: {e}")
+        st.error(f"Error loading model: {e}")
         st.stop()
 
 model = load_model()
@@ -39,7 +39,7 @@ def load_data():
         daily_df = df.resample("D").mean()
         return daily_df
     except Exception as e:
-        st.error(f"❌ Error loading past data: {e}")
+        st.error(f"Error loading past data: {e}")
         st.stop()
 
 data = load_data()
@@ -58,11 +58,11 @@ def create_features(df):
 # ----------------------
 # Sidebar Controls
 # ----------------------
-st.sidebar.header("🔧 Forecast Settings")
+st.sidebar.header("Forecast Settings")
 future_days = st.sidebar.slider("Forecast days:", min_value=1, max_value=30, value=7)
-default_start_date = data.index[-1] + timedelta(days=1)
 start_date = st.sidebar.date_input("Forecast Start Date:", default_start_date)
 start_time = st.sidebar.time_input("Start Time (for record):", value=time(0, 0))
+default_start_date = data.index[-1] + timedelta(days=1)
 
 # ----------------------
 # Forecasting Logic
@@ -106,7 +106,7 @@ plot_df = pd.concat([recent_actual, forecast_df], axis=0)
 # ----------------------
 # Plot
 # ----------------------
-st.subheader("📈 Forecasted Energy Consumption")
+st.subheader("Forecasted Energy Consumption")
 fig, ax = plt.subplots(figsize=(12, 5))
 plot_df.plot(ax=ax, linewidth=2, marker='o')
 ax.set_xlabel("Datetime")
@@ -142,3 +142,4 @@ st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
+
