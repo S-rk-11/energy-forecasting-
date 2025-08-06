@@ -43,15 +43,16 @@ def load_data():
 
 data = load_data()
 
-# ----------------------
-# Feature Engineering Function
+# Feature Engineering Function (Match Model)
 # ----------------------
 def create_features(df):
-    df['hour'] = df.index.hour
-    df['day'] = df.index.day
+    df['lag_1'] = data['PJMW_MW'].shift(1).reindex(df.index)
+    df['lag_2'] = data['PJMW_MW'].shift(2).reindex(df.index)
+    df['rolling_mean_3'] = data['PJMW_MW'].rolling(window=3).mean().shift(1).reindex(df.index)
     df['dayofweek'] = df.index.dayofweek
     df['month'] = df.index.month
-    return df[['hour', 'day', 'dayofweek', 'month']]
+    return df[['lag_1', 'lag_2', 'rolling_mean_3', 'dayofweek', 'month']]
+
 
 # ----------------------
 # User Input for Forecast
@@ -104,3 +105,4 @@ st.pyplot(fig)
 # Download Option
 # ----------------------
 st.download_button("📥 Download Forecast Data as CSV", data=future_df.to_csv(), file_name="forecast.csv")
+
