@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, time
 
 # ----------------------
 # Page Configuration
@@ -62,6 +62,7 @@ st.sidebar.header("🔧 Forecast Settings")
 future_days = st.sidebar.slider("Forecast days:", min_value=1, max_value=30, value=7)
 default_start_date = data.index[-1] + timedelta(days=1)
 start_date = st.sidebar.date_input("Forecast Start Date:", default_start_date)
+start_time = st.sidebar.time_input("Start Time (for record):", value=time(0, 0))
 
 # ----------------------
 # Forecasting Logic
@@ -76,7 +77,6 @@ last_known = df.copy()
 for i in range(future_days):
     next_date = last_known.index[-1] + timedelta(days=1)
     if next_date < pd.to_datetime(start_date):
-        # Fill dates until start_date is reached
         next_row = pd.DataFrame(index=[next_date])
         next_row['PJMW_MW'] = np.nan
         last_known = pd.concat([last_known, next_row])
@@ -94,7 +94,7 @@ for i in range(future_days):
     next_row['PJMW_MW'] = pred
 
     last_known = pd.concat([last_known, next_row])
-    predictions.append((next_date, pred))
+    predictions.append((datetime.combine(next_date.date(), start_time), pred))
 
 # ----------------------
 # Prepare Output
@@ -109,13 +109,12 @@ plot_df = pd.concat([recent_actual, forecast_df], axis=0)
 st.subheader("📈 Forecasted Energy Consumption")
 fig, ax = plt.subplots(figsize=(12, 5))
 plot_df.plot(ax=ax, linewidth=2, marker='o')
-ax.set_xlabel("Date")
+ax.set_xlabel("Datetime")
 ax.set_ylabel("MW Consumption")
 ax.set_title("Energy Consumption Forecast")
 ax.grid(True)
 fig.autofmt_xdate()
 
-# Add date line markers
 for date in forecast_df.index:
     ax.axvline(x=date, color='gray', linestyle='--', linewidth=0.4)
 
