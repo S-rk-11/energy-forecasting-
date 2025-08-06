@@ -139,13 +139,6 @@ if len(latest) > 0:
 else:
     st.warning("⚠️ No forecast data available for the selected date. Try choosing an earlier start date.")
 
-st.markdown("""
-### 📊 Automatic Graph Summary
-- **Maximum Forecasted Consumption**: {:.2f} MW  
-- **Minimum Forecasted Consumption**: {:.2f} MW  
-- **Average Forecasted Consumption**: {:.2f} MW
-""".format(max_val, min_val, avg_val))
-
 # ----------------------
 # Download Option
 # ----------------------
@@ -153,6 +146,7 @@ st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
+
 
 
 
