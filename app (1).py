@@ -10,7 +10,7 @@ def add_bg_from_url():
          f"""
          <style>
          .stApp {{
-             background-image: url("https://images.unsplash.com/photo-1581091012184-5c4c65fdb4d5");
+             background-image: url("https://www.pexels.com/photo/abstract-colorful-background-of-night-star-4021521/");
              background-attachment: fixed;
              background-size: cover;
          }}
@@ -19,7 +19,7 @@ def add_bg_from_url():
          unsafe_allow_html=True
      )
 
-add_bg_from_url(https://www.pexels.com/photo/abstract-colorful-background-of-night-star-4021521/)
+add_bg_from_url()
 
 # ----------------------
 # Page Configuration
@@ -162,6 +162,7 @@ st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
+
 
 
 
