@@ -107,13 +107,18 @@ plot_df = pd.concat([recent_actual, forecast_df], axis=0)
 # Plot
 # ----------------------
 st.subheader("📈 Forecasted Energy Consumption")
-fig, ax = plt.subplots(figsize=(10, 4))
-plot_df.plot(ax=ax, linewidth=2)
+fig, ax = plt.subplots(figsize=(12, 5))
+plot_df.plot(ax=ax, linewidth=2, marker='o')
 ax.set_xlabel("Date")
 ax.set_ylabel("MW Consumption")
 ax.set_title("Energy Consumption Forecast")
 ax.grid(True)
 fig.autofmt_xdate()
+
+# Add date line markers
+for date in forecast_df.index:
+    ax.axvline(x=date, color='gray', linestyle='--', linewidth=0.4)
+
 st.pyplot(fig)
 
 # ----------------------
