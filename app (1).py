@@ -59,11 +59,10 @@ def create_features(df):
 # Sidebar Controls
 # ----------------------
 st.sidebar.header("Forecast Settings")
-future_days = st.sidebar.slider("Forecast days:", min_value=1, max_value=30, value=7)
 default_start_date = data.index[-1] + timedelta(days=1)
 start_date = st.sidebar.date_input("Forecast Start Date:", default_start_date)
 start_time = st.sidebar.time_input("Start Time (for record):", value=time(0, 0))
-
+future_days = st.sidebar.slider("Forecast days:", min_value=1, max_value=30, value=7)
 
 # ----------------------
 # Forecasting Logic
@@ -143,4 +142,5 @@ st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
+
 
