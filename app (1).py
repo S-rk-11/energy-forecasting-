@@ -124,9 +124,20 @@ st.pyplot(fig)
 # Auto Graph Summary Below Plot
 # ----------------------
 latest = forecast_df.Forecast_MW.values
-max_val = np.max(latest)
-min_val = np.min(latest)
-avg_val = np.mean(latest)
+
+if len(latest) > 0:
+    max_val = np.max(latest)
+    min_val = np.min(latest)
+    avg_val = np.mean(latest)
+
+    st.markdown(f"""
+    ### 📊 Automatic Graph Summary
+    - **Maximum Forecasted Consumption**: {max_val:.2f} MW  
+    - **Minimum Forecasted Consumption**: {min_val:.2f} MW  
+    - **Average Forecasted Consumption**: {avg_val:.2f} MW
+    """)
+else:
+    st.warning("⚠️ No forecast data available for the selected date. Try choosing an earlier start date.")
 
 st.markdown("""
 ### 📊 Automatic Graph Summary
@@ -142,5 +153,6 @@ st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
+
 
 
