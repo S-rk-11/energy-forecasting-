@@ -5,22 +5,6 @@ import joblib
 import matplotlib.pyplot as plt
 from datetime import timedelta, datetime, time
 
-def add_bg_from_url():
-    st.markdown(
-         f"""
-         <style>
-         .stApp {{
-             background-image: url("https://www.pexels.com/photo/abstract-colorful-background-of-night-star-4021521/");
-             background-attachment: fixed;
-             background-size: cover;
-         }}
-         </style>
-         """,
-         unsafe_allow_html=True
-     )
-
-add_bg_from_url()
-
 # ----------------------
 # Page Configuration
 # ----------------------
@@ -162,6 +146,7 @@ st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
+
 
 
 
