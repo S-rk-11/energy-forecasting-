@@ -107,6 +107,24 @@ plt.ylabel("MW Consumption")
 plt.grid(True)
 st.pyplot(fig)
 
+# Plot Forecast Alone with Full Date Labels
+st.subheader("🔮 Forecast Only: Next 30 Days")
+fig2, ax2 = plt.subplots(figsize=(12, 4))
+
+# Format x-axis to show full date (YYYY-MM-DD)
+forecast_df.index = pd.to_datetime(forecast_df.index)
+forecast_df.plot(ax=ax2, color='orange', linewidth=2)
+ax2.set_xlabel("Date")
+ax2.set_ylabel("Forecasted MW")
+ax2.set_title("30-Day Energy Forecast")
+
+# Rotate and format x-axis labels
+ax2.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%Y-%m-%d'))
+plt.setp(ax2.get_xticklabels(), rotation=45, ha='right')
+
+plt.grid(True)
+st.pyplot(fig2)
+
 # ----------------------
 # Download Option
 # ----------------------
@@ -114,4 +132,5 @@ st.download_button("📥 Download Forecast Data as CSV",
                    data=forecast_df.reset_index().to_csv(index=False),
                    file_name="daily_forecast.csv",
                    mime="text/csv")
+
 
